@@ -49,6 +49,11 @@ struct svp_dstore_t {
   hid_t h5type;             /// Raw atomic datatype
   int rank;                 /// Number of dimensions of each data element
   hsize_t dims[MAX_RANK];   /// Rank-size list of individual array dimensions
+  // Cache data
+  hssize_t cstride;         /// Cache data stride (bytes)
+  unsigned long cptr;       /// Cache pointer
+  double *tcache;           /// Timestamp cache
+  void *dcache;             /// Data cache
 };
 
 ///////////////////////////////////////////////////////////////////////////////
