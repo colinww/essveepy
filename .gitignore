@@ -10,6 +10,9 @@
 # Caches
 **/__pycache__
 
+$ HD5 files
+**/*.hd5
+
 # Spyder project
 .spyproject
 
