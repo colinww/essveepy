@@ -1,0 +1,54 @@
+{
+    // Editor settings
+    "editor.fontSize": 14,
+    "editor.rulers": [80, 120],
+    "editor.detectIndentation": false,
+    "editor.minimap.enabled": false,
+
+    // Python
+    "python.defaultInterpreterPath": "${env:CONDAHOME}/bin/python3",
+    "python.envFile": "${workspaceFolder}/.env",
+    "python.terminal.activateEnvInCurrentTerminal": true,
+    // "python.languageServer": "Pylance",
+    "python.linting.pycodestyleEnabled": true,
+    "python.linting.pydocstyleEnabled": true,
+    "python.linting.pylintEnabled": false,
+    "python.linting.flake8Enabled": true,
+    "python.linting.flake8Args": [
+        "--max-line-length=79",
+        "--ignore=E402,W504",
+    ],
+    "python.formatting.provider": "autopep8",
+    "python.formatting.autopep8Args": [
+        "--max-line-length=79",
+        "--experimental",
+        "--aggressive",
+        "--verbose"
+    ],
+    "[python]": {
+        "editor.tabSize": 4,
+        "editor.defaultFormatter": "ms-python.python"
+    },
+    // C/C++
+    "[c]": {
+        "editor.defaultFormatter": "ms-vscode.cpptools",
+        "editor.tabSize": 2,
+    },
+    "[cpp]": {
+        "editor.defaultFormatter": "ms-vscode.cpptools",
+        "editor.tabSize": 2,
+    },
+    "C_Cpp.default.browse.path": [
+        "${workspaceFolder}",
+        "${env:CONDAHOME}/include",
+
+    ],
+    "C_Cpp.intelliSenseEngine": "Default",
+    "C_Cpp.clang_format_style": "Google",
+    "C_Cpp.clang_format_fallbackStyle": "LLVM",
+    "C_Cpp.enhancedColorization": "Enabled",
+    "C_Cpp.errorSquiggles": "EnabledIfIncludesResolve",
+
+    // File settings
+    "files.trimTrailingWhitespace": true,
+}

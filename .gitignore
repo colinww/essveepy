@@ -1,52 +1,37 @@
-# Prerequisites
-*.d
+######################
+# essveepy git ignores
+######################
 
-# Object files
-*.o
-*.ko
-*.obj
-*.elf
+# OS junk files
+**/.DS_Store
+**/.nfs*
+**/*~
 
-# Linker output
-*.ilk
-*.map
-*.exp
+# Caches
+**/__pycache__
 
-# Precompiled Headers
-*.gch
-*.pch
+# Spyder project
+.spyproject
 
-# Libraries
-*.lib
-*.a
-*.la
-*.lo
+# Intermediate C products
+**/*.d
+**/*.gch
+**/*.pch
 
-# Shared objects (inc. Windows DLLs)
-*.dll
-*.so
-*.so.*
-*.dylib
-
-# Executables
-*.exe
-*.out
-*.app
-*.i*86
-*.x86_64
-*.hex
+# Compiled objects
+**/*.o
+**/*.elf
+**/*.so
+**/*.a
+**/*.lib
+**/*.out
+**/*.hex
 
 # Debug files
-*.dSYM/
-*.su
-*.idb
-*.pdb
+**/*.dSYM/
 
-# Kernel Module Compile Results
-*.mod*
-*.cmd
-.tmp_versions/
-modules.order
-Module.symvers
-Mkfile.old
-dkms.conf
+# Xcelium outputs
+**/xcelium.d/
+**/.simvision/
+**/.bpad/
+**/waves.shm/
