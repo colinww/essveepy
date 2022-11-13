@@ -22,6 +22,15 @@
 // Internal functions
 ///////////////////////////////////////////////////////////////////////////////
 
+/**
+ * @brief Flush the memory cache to the HD5 file.
+ *
+ * @param dat Data structure to be flushed.
+ *
+ * This method is used either before closing an HD5 file or each time the cache
+ * is full, with CHUNK_SIZE entries. Writing the HD5 file in contiguous chunks
+ * rather than element-by-element gains almost 100x speedup.
+ */
 void svp_flush_cache(struct svp_dstore_t *dat) {
   // Define the memory view of the cache source data
   hsize_t mdims[1] = {};
@@ -48,6 +57,58 @@ void svp_flush_cache(struct svp_dstore_t *dat) {
   H5Sclose(sspc);
   H5Sclose(mspc);
 }  // svp_flush_cache
+
+/**
+ * @brief Reconstruct a signal absolute path hierarchy in HD5 groups.
+ *
+ * @param fid Starting object, usually file ID.
+ * @param full_name The full path to the signal.
+ * @param gid Final group ID containing the actual signal.
+ * @param sig_name Actual signal name.
+ *
+ * This performs a similar function to the python os.mkdirs() function, in that
+ * any intermediate hierarchy (containing submodules) are constructed as HD5
+ * groups if they do not already exist.
+ */
+void svp_hier_name(hid_t fid, const char *full_name, hid_t *gid,
+                   char **sig_name) {
+  // Copy the string to a new location
+  char *name_cpy = (char *)malloc(strlen(full_name) + 1);
+  strcpy(name_cpy, full_name);
+  // Token-ize the name by the '.' hierarchy separators
+  const char *delim = ".";
+  // This contains the offset within the full_name of the first character of
+  // the signal name
+  int name_start = 0;
+  // Starting point group is the root '/' within the file
+  *gid = H5Gopen(fid, "/", H5P_DEFAULT);
+  hid_t next_gid;
+  // Apply first tokenization, to load string into strtok
+  char *token = strtok(name_cpy, delim);
+  // Split token by delimiter
+  char *next_token = strtok(NULL, delim);
+  while (next_token) {
+    // If next_token is found, it means we just removed one hierarchy separator
+    // Increment the name starting point offset (plus delimiter)
+    name_start += next_token - token;
+    // Descend into the hierarchy by trying to open the next group
+    if (0 == H5Lexists(*gid, token, H5P_DEFAULT)) {
+      // This group does not exist yet, so create it
+      next_gid = H5Gcreate(*gid, token, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    } else {
+      next_gid = H5Gopen(*gid, token, H5P_DEFAULT);
+    }
+    H5Gclose(*gid);
+    // Assign gid to the next and continue
+    *gid = next_gid;
+    // Continue tokenization
+    token = next_token;
+    next_token = strtok(NULL, delim);
+  }
+  // When next_token is null, it means that token contains the final name, and
+  // name_start is the correct offset from the original full_name
+  *sig_name = (char *)((unsigned long)full_name + name_start);
+}  // svp_hier_name
 
 ///////////////////////////////////////////////////////////////////////////////
 // API
@@ -110,7 +171,11 @@ struct svp_dstore_t *svp_create_dstore(hid_t fid, const char *name,
   dat->dspc = H5Screate_simple(1, cpd_dims, cpd_maxdims);
   hid_t prop = H5Pcreate(H5P_DATASET_CREATE);
   H5Pset_chunk(prop, 1, cpd_chunk_dims);
-  dat->dset = H5Dcreate2(fid, name, dat->dtyp, dat->dspc, H5P_DEFAULT, prop,
+  // Create the hierarchical name
+  hid_t gid;
+  char *sig_name;
+  svp_hier_name(fid, name, &gid, &sig_name);
+  dat->dset = H5Dcreate2(gid, sig_name, dat->dtyp, dat->dspc, H5P_DEFAULT, prop,
                          H5P_DEFAULT);
   H5Pclose(prop);
 

@@ -33,14 +33,14 @@ int main(void) {
 
   // Add some data to the file
   int d1_dims[2] = {2, 3};
-  struct svp_dstore_t *ds1 = svp_create_dstore(dat->fptr, "sync_long_2x3", 0, 2,
-                                               d1_dims, H5T_NATIVE_LONG);
+  struct svp_dstore_t *ds1 = svp_create_dstore(
+      dat->fptr, "u_top.u_sub1.sync_long_2x3", 0, 2, d1_dims, H5T_NATIVE_LONG);
   int d2_dims[1] = {1};
   struct svp_dstore_t *ds2 = svp_create_dstore(dat->fptr, "sync_long_1", 0, 1,
                                                d2_dims, H5T_NATIVE_LONG);
   int d3_dims[1] = {4};
-  struct svp_dstore_t *ds3 = svp_create_dstore(dat->fptr, "async_double_4", 1,
-                                               1, d3_dims, H5T_NATIVE_DOUBLE);
+  struct svp_dstore_t *ds3 = svp_create_dstore(
+      dat->fptr, "u_top.async_double_4", 1, 1, d3_dims, H5T_NATIVE_DOUBLE);
   // Register the data
   svp_register(dat, ds1);
   svp_register(dat, ds2);
