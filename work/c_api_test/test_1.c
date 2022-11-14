@@ -7,7 +7,7 @@
 //
 // Description
 // -----------
-// Test the C-API.
+// Test the C-API, basic synchronous and asynchronous data storage.
 //
 //
 // Version History
@@ -29,22 +29,24 @@
 
 int main(void) {
   // Open the data
-  struct svp_cls *dat = svp_fopen("test_1_data.h5");
+  struct svp_hdf5_data *dat = svp_hdf5_fopen("test_1_data.h5");
 
   // Add some data to the file
   int d1_dims[2] = {2, 3};
-  struct svp_dstore_t *ds1 = svp_create_dstore(
-      dat->fptr, "u_top.u_sub1.sync_long_2x3", 0, 2, d1_dims, H5T_NATIVE_LONG);
+  struct svp_dstore_t *ds1 =
+      svp_dstore_create(dat->fptr, "u_top.u_sub1.sync_long_2x3", SVP_SYNC_DATA,
+                        2, d1_dims, H5T_NATIVE_LONG);
   int d2_dims[1] = {1};
-  struct svp_dstore_t *ds2 = svp_create_dstore(dat->fptr, "sync_long_1", 0, 1,
-                                               d2_dims, H5T_NATIVE_LONG);
+  struct svp_dstore_t *ds2 = svp_dstore_create(
+      dat->fptr, "sync_long_1", SVP_SYNC_DATA, 1, d2_dims, H5T_NATIVE_LONG);
   int d3_dims[1] = {4};
-  struct svp_dstore_t *ds3 = svp_create_dstore(
-      dat->fptr, "u_top.async_double_4", 1, 1, d3_dims, H5T_NATIVE_DOUBLE);
+  struct svp_dstore_t *ds3 =
+      svp_dstore_create(dat->fptr, "u_top.async_double_4", SVP_ASYNC_DATA, 1,
+                        d3_dims, H5T_NATIVE_DOUBLE);
   // Register the data
-  svp_register(dat, ds1);
-  svp_register(dat, ds2);
-  svp_register(dat, ds3);
+  svp_hdf5_addsig(dat, ds1);
+  svp_hdf5_addsig(dat, ds2);
+  svp_hdf5_addsig(dat, ds3);
 
   // Write to long 2x3 array
   long dwrite1[2][3];
@@ -56,7 +58,7 @@ int main(void) {
       }
     }
     // Write data
-    svp_write_data(ds1, 0, dwrite1);
+    svp_dstore_write_data(ds1, 0, dwrite1);
   }
 
   // Write to singleton long
@@ -65,7 +67,7 @@ int main(void) {
     // Populate data
     dwrite2[0] = -ii;
     // Write data
-    svp_write_data(ds2, 0, dwrite2);
+    svp_dstore_write_data(ds2, 0, dwrite2);
   }
 
   // Write to asynchronous array of 4 doubles
@@ -78,9 +80,9 @@ int main(void) {
     }
     dtime = 1e-9 * ii;
     // Write data
-    svp_write_data(ds3, dtime, dwrite3);
+    svp_dstore_write_data(ds3, dtime, dwrite3);
   }
 
   // Close the data
-  svp_fclose(dat);
+  svp_hdf5_fclose(dat);
 }

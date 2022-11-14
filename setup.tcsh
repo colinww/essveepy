@@ -19,9 +19,9 @@
 
 # Python
 setenv CONDAHOME /tools/conda/2022.05
-source ${CONDAHOME}/etc/profile.d/conda.csh activate
+source ${CONDAHOME}/etc/profile.d/conda.csh
 setenv PYTHONPATH ${CONDAHOME}/bin:${PYTHONPATH}
-
+conda activate
 
 # Xcelium setup
 setenv AMSHOME /tools/cadence/XCELIUM2109

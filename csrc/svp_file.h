@@ -33,20 +33,45 @@
 ///////////////////////////////////////////////////////////////////////////////
 
 
-struct svp_cls {
+struct svp_hdf5_data {
   const char *name;
   hid_t fptr;
   int num_signals;
   struct svp_dstore_t **dptr;
-};
+};  // svp_hdf5_data
 
 
 ///////////////////////////////////////////////////////////////////////////////
 // API
 ///////////////////////////////////////////////////////////////////////////////
 
-struct svp_cls *svp_fopen(const char *fname);
+/**
+ * @brief Open a new HDF5 file for dumping simulation data.
+ *
+ * @param fname Full path to file to be created.
+ * @return struct svp_hdf5_data* File handle for adding signals to the dump.
+ *
+ * This will overwrite any existing file with the given name.
+ *
+ */
+struct svp_hdf5_data *svp_hdf5_fopen(const char *fname);
 
-int svp_register(struct svp_cls *clsdat, struct svp_dstore_t *dat);
 
-int svp_fclose(struct svp_cls *clsdat);
+/**
+ * @brief Add a signal to the file to be dumped.
+ *
+ * @param clsdat File handle to contain signal.
+ * @param dat Data store object that will be added to the file.
+ * @return int Returns 0 if successful.
+ */
+int svp_hdf5_addsig(struct svp_hdf5_data *clsdat, struct svp_dstore_t *dat);
+
+/**
+ * @brief Close the file and any registered data stores.
+ *
+ * @param clsdat File handle to be closed.
+ * @return int Returns 0 if successful.
+ *
+ * After closing, none of the associated data stores can be used.
+ */
+int svp_hdf5_fclose(struct svp_hdf5_data *clsdat);

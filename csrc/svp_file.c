@@ -17,9 +17,9 @@
 
 #include "svp_file.h"
 
-struct svp_cls *svp_fopen(const char *fname) {
+struct svp_hdf5_data *svp_hdf5_fopen(const char *fname) {
   // Allocate class data
-  struct svp_cls *clsdat = malloc(sizeof(struct svp_cls));
+  struct svp_hdf5_data *clsdat = malloc(sizeof(struct svp_hdf5_data));
   // Open the file
   clsdat->fptr = H5Fcreate(fname, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
   // Save file name
@@ -34,10 +34,10 @@ struct svp_cls *svp_fopen(const char *fname) {
   }
   // Return new data store
   return clsdat;
-}  // svp_fopen
+}  // svp_hdf5_fopen
 
 
-int svp_register(struct svp_cls *clsdat, struct svp_dstore_t *dat) {
+int svp_hdf5_addsig(struct svp_hdf5_data *clsdat, struct svp_dstore_t *dat) {
   // Check if maximum number of files has been reached
   if (MAX_SIGNALS == clsdat->num_signals) {
     fprintf(stderr, "Maximum number of signals has been reached: %d\n",
@@ -48,12 +48,12 @@ int svp_register(struct svp_cls *clsdat, struct svp_dstore_t *dat) {
   clsdat->dptr[clsdat->num_signals] = dat;
   clsdat->num_signals += 1;
   return 0;
-}  // svp_register
+}  // svp_hdf5_addsig
 
 
-int svp_fclose(struct svp_cls *clsdat) {
+int svp_hdf5_fclose(struct svp_hdf5_data *clsdat) {
   for (int ii = 0; clsdat->num_signals > ii; ++ii) {
-    svp_close_dstore(clsdat->dptr[ii]);
+    svp_dstore_close(clsdat->dptr[ii]);
   }
   // Free the data store
   free(clsdat->dptr);
@@ -61,4 +61,5 @@ int svp_fclose(struct svp_cls *clsdat) {
   H5Fclose(clsdat->fptr);
   // Delete the class data
   free(clsdat);
-}  // svp_fclose
+  return 0;
+}  // svp_hdf5_fclose

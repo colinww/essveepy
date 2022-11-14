@@ -23,42 +23,6 @@
 ///////////////////////////////////////////////////////////////////////////////
 
 /**
- * @brief Flush the memory cache to the HD5 file.
- *
- * @param dat Data structure to be flushed.
- *
- * This method is used either before closing an HD5 file or each time the cache
- * is full, with CHUNK_SIZE entries. Writing the HD5 file in contiguous chunks
- * rather than element-by-element gains almost 100x speedup.
- */
-void svp_flush_cache(struct svp_dstore_t *dat) {
-  // Define the memory view of the cache source data
-  hsize_t mdims[1] = {};
-  mdims[0] = dat->cptr;
-  hid_t mspc = H5Screate_simple(1, mdims, NULL);
-  // Get the subspace from dataset
-  hid_t sspc = H5Dget_space(dat->dset);
-  // Define the hyperslab where data will be written
-  hsize_t cnt[1] = {0};
-  hsize_t ofst[1] = {0};
-  cnt[0] = dat->cptr;
-  ofst[0] = dat->wptr;
-  H5Sselect_hyperslab(sspc, H5S_SELECT_SET, ofst, NULL, cnt, NULL);
-  // Write data
-  if (dat->t_mid) {
-    H5Dwrite(dat->dset, dat->t_mid, mspc, sspc, dat->xfer_id, dat->tcache);
-  }
-  // Write data
-  H5Dwrite(dat->dset, dat->d_mid, mspc, sspc, dat->xfer_id, dat->dcache);
-  // Now update the write and cache pointers
-  dat->wptr += dat->cptr;
-  dat->cptr = 0;
-  // Close views
-  H5Sclose(sspc);
-  H5Sclose(mspc);
-}  // svp_flush_cache
-
-/**
  * @brief Reconstruct a signal absolute path hierarchy in HD5 groups.
  *
  * @param fid Starting object, usually file ID.
@@ -70,8 +34,8 @@ void svp_flush_cache(struct svp_dstore_t *dat) {
  * any intermediate hierarchy (containing submodules) are constructed as HD5
  * groups if they do not already exist.
  */
-void svp_hier_name(hid_t fid, const char *full_name, hid_t *gid,
-                   char **sig_name) {
+void svp_dstore_hier_name(hid_t fid, const char *full_name, hid_t *gid,
+                          char **sig_name) {
   // Copy the string to a new location
   char *name_cpy = (char *)malloc(strlen(full_name) + 1);
   strcpy(name_cpy, full_name);
@@ -108,97 +72,160 @@ void svp_hier_name(hid_t fid, const char *full_name, hid_t *gid,
   // When next_token is null, it means that token contains the final name, and
   // name_start is the correct offset from the original full_name
   *sig_name = (char *)((unsigned long)full_name + name_start);
-}  // svp_hier_name
+}  // svp_dstore_hier_name
+
+
+/**
+ * @brief Flush the memory cache to the HD5 file.
+ *
+ * @param dat Data structure to be flushed.
+ *
+ * This method is used either before closing an HD5 file or each time the cache
+ * is full, with CHUNK_SIZE entries. Writing the HD5 file in contiguous chunks
+ * rather than element-by-element gains almost 100x speedup.
+ */
+void svp_dstore_flush(struct svp_dstore_t *dat) {
+  // Define the memory view of the cache source data
+  hsize_t mdims[1] = {};
+  mdims[0] = dat->cptr;
+  hid_t mspc = H5Screate_simple(1, mdims, NULL);
+  // Get the subspace from dataset
+  hid_t sspc = H5Dget_space(dat->dset);
+  // Define the hyperslab where data will be written
+  hsize_t cnt[1] = {0};
+  hsize_t ofst[1] = {0};
+  cnt[0] = dat->cptr;
+  ofst[0] = dat->wptr;
+  H5Sselect_hyperslab(sspc, H5S_SELECT_SET, ofst, NULL, cnt, NULL);
+  // Write data
+  if (dat->t_mid) {
+    H5Dwrite(dat->dset, dat->t_mid, mspc, sspc, dat->xfer_id, dat->tcache);
+  }
+  // Write data (including svp_sim_time_t data)
+  H5Dwrite(dat->dset, dat->d_mid, mspc, sspc, dat->xfer_id, dat->dcache);
+  // Now update the write and cache pointers
+  dat->wptr += dat->cptr;
+  dat->cptr = 0;
+  // Close views
+  H5Sclose(sspc);
+  H5Sclose(mspc);
+}  // svp_dstore_flush
+
 
 ///////////////////////////////////////////////////////////////////////////////
 // API
 ///////////////////////////////////////////////////////////////////////////////
 
-struct svp_dstore_t *svp_create_dstore(hid_t fid, const char *name,
-                                       int is_async, int rank, const int *dims,
-                                       hid_t raw_type) {
-  // Allocate a new data structure
+struct svp_dstore_t *svp_dstore_create(hid_t fid, const char *name,
+                                       enum svp_storage_e store_type, int rank,
+                                       const int *dims, hid_t raw_type) {
+  // Allocate a new data structure and 0-initialize
   struct svp_dstore_t *dat = malloc(sizeof(struct svp_dstore_t));
-  // First copy the parameters that are simple
+  memset(dat, 0, sizeof(struct svp_dstore_t));
+  // First set any parameters that are simple
   dat->name = name;
-  dat->wptr = 0;
-  dat->h5type = raw_type;
-  // Check that the rank is smaller than maximum
-  if (MAX_RANK < rank) {
-    fprintf(stderr, "ERROR: array rank %d is larger than maximum: %d\n",
-            rank, MAX_RANK);
-  }
-  dat->rank = rank;
-  for (int ii = 0; rank > ii; ++ii) {
-    dat->dims[ii] = dims[ii];
-  }
-
-  // Create the transfer ID to allow non-contiguous writing of async data
-  dat->xfer_id = H5Pcreate(H5P_DATASET_XFER);
-  H5Pset_preserve(dat->xfer_id, 1);
-  // Create the data memoryview
-  hsize_t arr_dims[MAX_RANK];
-  for (int ii = 0; rank > ii; ++ii) {
-    arr_dims[ii] = dims[ii];
-  }
-  hid_t d_tid = H5Tarray_create2(raw_type, rank, arr_dims);
-  dat->d_mid = H5Tcreate(H5T_COMPOUND, H5Tget_size(d_tid));
-  H5Tinsert(dat->d_mid, "data", 0, d_tid);
-  // Determine whether or not time will be stored
-  if (is_async) {
-    // Async signal, so store time as well as data. Create the memoryview
-    dat->t_mid = H5Tcreate(H5T_COMPOUND, H5Tget_size(H5T_NATIVE_DOUBLE));
-    H5Tinsert(dat->t_mid, "time", 0, H5T_NATIVE_DOUBLE);
-    // Now construct the main compound datatype
-    hsize_t cpd_size = H5Tget_size(H5T_NATIVE_DOUBLE) + H5Tget_size(d_tid);
-    dat->dtyp = H5Tcreate(H5T_COMPOUND, cpd_size);
-    // Insert the time and data
-    H5Tinsert(dat->dtyp, "time", 0, H5T_NATIVE_DOUBLE);
-    H5Tinsert(dat->dtyp, "data", H5Tget_size(H5T_NATIVE_DOUBLE), d_tid);
-  } else {
-    dat->t_mid = 0;
-    // Main datatype is just the bare data array
-    hsize_t cpd_size = H5Tget_size(d_tid);
-    dat->dtyp = H5Tcreate(H5T_COMPOUND, cpd_size);
-    // Insert the data
-    H5Tinsert(dat->dtyp, "data", 0, d_tid);
-  }
-
-  // Create a resizable dataspace and dataset with this compound type
+  dat->store_type = store_type;
+  // Create a resizable dataspace
   hsize_t cpd_dims[1] = {CHUNK_SIZE};
   hsize_t cpd_maxdims[1] = {H5S_UNLIMITED};
   hsize_t cpd_chunk_dims[1] = {CHUNK_SIZE};
   dat->dspc = H5Screate_simple(1, cpd_dims, cpd_maxdims);
+
+  // Create the transfer ID to allow non-contiguous writing of data
+  dat->xfer_id = H5Pcreate(H5P_DATASET_XFER);
+  H5Pset_preserve(dat->xfer_id, 1);
+
+  // Determine what to do based on the storage enum
+  switch (store_type) {
+    case (SVP_SIM_TIME) :
+      // Handle svp_sim_time_t first, since it is the most different in terms
+      // of the dataset structure
+      dat->h5type = H5T_NATIVE_LONG;
+      dat->dims = malloc(sizeof(hsize_t));
+      dat->dims[0] = 1;
+      dat->rank = 1;
+      // Create the time memoryview, which is the remainder
+      dat->t_mid = H5Tcreate(H5T_COMPOUND, H5Tget_size(H5T_NATIVE_DOUBLE));
+      H5Tinsert(dat->t_mid, "rem", 0, H5T_NATIVE_DOUBLE);
+      // Create the data memoryview, which is the integer number of nanoseconds
+      dat->d_mid = H5Tcreate(H5T_COMPOUND, H5Tget_size(H5T_NATIVE_LONG));
+      H5Tinsert(dat->d_mid, "ns", 0, H5T_NATIVE_LONG);
+      // Create the compound datatype, which has the layout of svp_sim_time_t
+      dat->dtyp = H5Tcreate(H5T_COMPOUND, sizeof(struct svp_sim_time_t));
+      // Insert elements
+      H5Tinsert(dat->dtyp, "ns", HOFFSET(struct svp_sim_time_t, ns),
+                H5T_NATIVE_LONG);
+      H5Tinsert(dat->dtyp, "rem", HOFFSET(struct svp_sim_time_t, rem),
+                H5T_NATIVE_DOUBLE);
+      // Allocate both time and data caches
+      dat->cstride = H5Tget_size(H5T_NATIVE_LONG);
+      dat->tcache = (double *)malloc(CHUNK_SIZE * sizeof(double));
+      dat->dcache = malloc(CHUNK_SIZE * H5Tget_size(H5T_NATIVE_LONG));
+      break;
+    case (SVP_ASYNC_DATA) :
+      // Do special setup particular to asynchronous data, then fall through to
+      // the regular synchronous data setup. First create the memoryview of
+      // the double timestamps
+      dat->t_mid = H5Tcreate(H5T_COMPOUND, H5Tget_size(H5T_NATIVE_DOUBLE));
+      H5Tinsert(dat->t_mid, "time", 0, H5T_NATIVE_DOUBLE);
+      // Allocate cache space
+      dat->tcache = (double *)malloc(CHUNK_SIZE * sizeof(double));
+    case (SVP_SYNC_DATA) :
+      // Main data storage setup, for both synchronous and asynchronous types
+      dat->h5type = raw_type;
+      // Allocate dimension array, and check the data size
+      dat->dims = malloc(rank * sizeof(hsize_t));
+      dat->rank = rank;
+      hsize_t dim_prod = 1;
+      for (int ii = 0; rank > ii; ++ii) {
+        dat->dims[ii] = dims[ii];
+        dim_prod *= dims[ii];
+      }
+      if (MAX_FLAT_SIZE < dim_prod) {
+        fprintf(stderr, "Data record size %ld exceeds maximum: %ld\n", dim_prod,
+                MAX_FLAT_SIZE);
+        return NULL;
+      }
+      // Create the data memoryview
+      hid_t d_tid = H5Tarray_create2(raw_type, rank, dat->dims);
+      dat->d_mid = H5Tcreate(H5T_COMPOUND, H5Tget_size(d_tid));
+      H5Tinsert(dat->d_mid, "data", 0, d_tid);
+      // Create the compound datatype, check if this is async
+      hsize_t dofst = 0;
+      if (dat->t_mid) {
+        // We need to insert time in here
+        dat->dtyp = H5Tcreate(
+            H5T_COMPOUND, H5Tget_size(H5T_NATIVE_DOUBLE) + H5Tget_size(d_tid));
+        H5Tinsert(dat->dtyp, "time", 0, H5T_NATIVE_DOUBLE);
+        dofst = H5Tget_size(H5T_NATIVE_DOUBLE);
+      } else {
+        dat->dtyp = H5Tcreate(H5T_COMPOUND, H5Tget_size(d_tid));
+      }
+      // Finally, insert the data
+      H5Tinsert(dat->dtyp, "data", dofst, d_tid);
+      // Allocate the cache space
+      dat->cstride = H5Tget_size(d_tid);
+      dat->dcache = malloc(CHUNK_SIZE * H5Tget_size(d_tid));
+  }  // switch (svp_storage_e)
+
+  // Create the hierarchical name
   hid_t prop = H5Pcreate(H5P_DATASET_CREATE);
   H5Pset_chunk(prop, 1, cpd_chunk_dims);
-  // Create the hierarchical name
   hid_t gid;
   char *sig_name;
-  svp_hier_name(fid, name, &gid, &sig_name);
+  svp_dstore_hier_name(fid, name, &gid, &sig_name);
   dat->dset = H5Dcreate2(gid, sig_name, dat->dtyp, dat->dspc, H5P_DEFAULT, prop,
                          H5P_DEFAULT);
   H5Pclose(prop);
 
-  // Allocate space for the cache data
-  dat->cptr = 0;
-  dat->cstride = H5Tget_size(d_tid);
-  if (is_async) {
-    // Allocate timestamp cache
-    dat->tcache = (double *)malloc(CHUNK_SIZE * sizeof(double));
-  } else {
-    dat->tcache = NULL;
-  }
-  // Data cache
-  dat->dcache = malloc(CHUNK_SIZE * H5Tget_size(d_tid));
-
   // Return the data structure handle
   return dat;
-}  // svp_create_dstore
+}  // svp_dstore_create
 
 
-void svp_close_dstore(struct svp_dstore_t *dat) {
+void svp_dstore_close(struct svp_dstore_t *dat) {
   // Flush any outstanding data
-  svp_flush_cache(dat);
+  svp_dstore_flush(dat);
   // Resize the dataspace to only contain the number of elements written
   hid_t sspc = H5Dget_space(dat->dset);
   hsize_t cdims[1];
@@ -208,27 +235,33 @@ void svp_close_dstore(struct svp_dstore_t *dat) {
   H5Dset_extent(dat->dset, cdims);
   H5Sclose(sspc);
   // Close everything that was open
-  H5Tclose(dat->d_mid);
+  if (dat->d_mid) {
+    H5Tclose(dat->d_mid);
+  }
   if (dat->t_mid) {
     H5Tclose(dat->t_mid);
   }
   H5Pclose(dat->xfer_id);
-  H5Tclose(dat->dtyp);
   H5Dclose(dat->dset);
+  H5Tclose(dat->dtyp);
   H5Sclose(dat->dspc);
-
   // Free the cache data
+  if (dat->dims) {
+    free(dat->dims);
+  }
   if (dat->tcache) {
     free(dat->tcache);
   }
-  free(dat->dcache);
-
+  if (dat->dcache) {
+    free(dat->dcache);
+  }
   // Free the data
   free(dat);
-}  // svp_close_dstore
+}  // svp_dstore_close
 
 
-void svp_write_data(struct svp_dstore_t *dat, double simtime, const void *buf) {
+int svp_dstore_write_data(struct svp_dstore_t *dat, double simtime,
+                          const void *buf) {
   // Write timestamp to the time cache if this is async signal
   if (dat->t_mid) {
     dat->tcache[dat->cptr] = simtime;
@@ -243,7 +276,7 @@ void svp_write_data(struct svp_dstore_t *dat, double simtime, const void *buf) {
   // Check if the cache is full
   if (CHUNK_SIZE == dat->cptr) {
     // First flush the cache (this will update wptr/cptr)
-    svp_flush_cache(dat);
+    svp_dstore_flush(dat);
     // Increase size of dataset
     hid_t sspc = H5Dget_space(dat->dset);
     hsize_t cdims[1];
@@ -252,4 +285,36 @@ void svp_write_data(struct svp_dstore_t *dat, double simtime, const void *buf) {
     H5Dset_extent(dat->dset, cdims);
     H5Sclose(sspc);
   }
-}  // svp_write_data
+  return 0;
+}  // svp_dstore_write_data
+
+
+int svp_dstore_write_time(struct svp_dstore_t *dat,
+                          struct svp_sim_time_t simtime) {
+  // Check this is the correct storage type
+  if (SVP_SIM_TIME != dat->store_type) {
+    fprintf(stderr, "This signal: %s has the wrong storage type!\n", dat->name);
+    return 1;
+  }
+
+  // Compute the memory address for the next svp_sim_time_t
+  dat->tcache[dat->cptr] = simtime.rem;
+  long *dptr = (long *)((char *)dat->dcache + (dat->cptr * dat->cstride));
+  *dptr = simtime.ns;
+  // Increment cache pointer
+  dat->cptr += 1;
+
+  // Check if the cache is full
+  if (CHUNK_SIZE == dat->cptr) {
+    // First flush the cache (this will update wptr/cptr)
+    svp_dstore_flush(dat);
+    // Increase size of dataset
+    hid_t sspc = H5Dget_space(dat->dset);
+    hsize_t cdims[1];
+    H5Sget_simple_extent_dims(sspc, cdims, NULL);
+    cdims[0] += CHUNK_SIZE;
+    H5Dset_extent(dat->dset, cdims);
+    H5Sclose(sspc);
+  }
+  return 0;
+}  // svp_dstore_write_time
