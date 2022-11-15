@@ -2,24 +2,22 @@
 #
 # UCSD ISPG Group 2022
 #
-# Created on 12-Nov-22
+# Created on 13-Nov-22
 # @author: Colin Weltin-Wu
 #
 # Description
 # -----------
-# Makefile for building the HDF5 file interface wrappers.
+# Test noise generation functions.
 #
 # Version History
 # ---------------
-# 12-Nov-22: Initial version
+# 13-Nov-22: Initial version
 #
 ###############################################################################
 
 CC_FLAGS = -g -O3
 # Get directory of svlib
 SVLIB := $(shell readlink -f ../../svlib)
-
-
 
 .PHONY: all
 all: prereq test_1 test_2

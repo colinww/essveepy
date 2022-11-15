@@ -50,4 +50,9 @@
 
     // File settings
     "files.trimTrailingWhitespace": true,
+    "files.associations": {
+        "limits": "c",
+        "type_traits": "c",
+        "cmath": "c"
+    },
 }
