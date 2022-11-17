@@ -16,6 +16,7 @@
 ///////////////////////////////////////////////////////////////////////////////
 
 #include "svp_file.h"
+#include "svp_dstore.h"
 
 struct svp_hdf5_data *svp_hdf5_fopen(const char *fname) {
   // Allocate class data

@@ -21,7 +21,7 @@
 #include <string.h>
 
 #include "../../csrc/svp_file.h"
-
+#include "../../csrc/svp_dstore.h"
 
 #define NUM_WRITE_1 100000
 #define NUM_WRITE_2 100000
@@ -34,14 +34,14 @@ int main(void) {
   // Add some data to the file
   int d1_dims[2] = {2, 3};
   struct svp_dstore_t *ds1 =
-      svp_dstore_create(dat->fptr, "u_top.u_sub1.sync_long_2x3", SVP_SYNC_DATA,
+      svp_dstore_create(dat, "u_top.u_sub1.sync_long_2x3", SVP_STORE_SYNC_DATA,
                         2, d1_dims, H5T_NATIVE_LONG);
   int d2_dims[1] = {1};
   struct svp_dstore_t *ds2 = svp_dstore_create(
-      dat->fptr, "sync_long_1", SVP_SYNC_DATA, 1, d2_dims, H5T_NATIVE_LONG);
+      dat, "sync_long_1", SVP_STORE_SYNC_DATA, 1, d2_dims, H5T_NATIVE_LONG);
   int d3_dims[1] = {4};
   struct svp_dstore_t *ds3 =
-      svp_dstore_create(dat->fptr, "u_top.async_double_4", SVP_ASYNC_DATA, 1,
+      svp_dstore_create(dat, "u_top.async_double_4", SVP_STORE_ASYNC_DATA, 1,
                         d3_dims, H5T_NATIVE_DOUBLE);
   // Register the data
   svp_hdf5_addsig(dat, ds1);

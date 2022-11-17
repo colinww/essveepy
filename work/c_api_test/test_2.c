@@ -22,6 +22,7 @@
 #include <string.h>
 
 #include "../../csrc/svp_file.h"
+#include "../../csrc/svp_dstore.h"
 
 #define NUM_WRITE 1000000
 
@@ -30,10 +31,10 @@ int main(void) {
   struct svp_hdf5_data *dat = svp_hdf5_fopen("test_2_data.h5");
 
   // Create a timestamp entry
-  struct svp_dstore_t *ds1 = svp_dstore_create(dat->fptr, "u_top.ts_write_time",
-                                               SVP_SIM_TIME, 0, NULL, 0);
-  struct svp_dstore_t *ds2 = svp_dstore_create(dat->fptr, "u_top.ts_write_data",
-                                               SVP_SIM_TIME, 0, NULL, 0);
+  struct svp_dstore_t *ds1 = svp_dstore_create(dat, "u_top.ts_write_time",
+                                               SVP_STORE_SIM_TIME, 0, NULL, 0);
+  struct svp_dstore_t *ds2 = svp_dstore_create(dat, "u_top.ts_write_data",
+                                               SVP_STORE_SIM_TIME, 0, NULL, 0);
   // Register
   svp_hdf5_addsig(dat, ds1);
   svp_hdf5_addsig(dat, ds2);
@@ -44,7 +45,7 @@ int main(void) {
     ts.ns = ii;
     ts.rem = 1e-9 * ii;
     svp_dstore_write_time(ds1, ts);
-    svp_dstore_write_long(ds2, ts.rem, ts.ns);
+    svp_dstore_write_data(ds2, ts.rem, &ts.ns);
   }
 
   // Close the data

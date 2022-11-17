@@ -19,8 +19,6 @@ CC_FLAGS = -g -O3
 # Get directory of svlib
 SVLIB := $(shell readlink -f ../../svlib)
 
-
-
 .PHONY: all
 all: prereq test_1 test_2
 
@@ -30,12 +28,12 @@ prereq:
 
 .PHONY: test_1
 test_1: prereq
-	h5cc $(CC_FLAGS) -c test_1.c -o test_1.o
+	h5cc $(CC_FLAGS) -I$(AMSHOME)/tools/include -c test_1.c -o test_1.o
 	h5cc test_1.o -o test_1.out -Wl,-rpath=$(SVLIB) -L$(SVLIB) -lessveepy
 
 .PHONY: test_2
 test_2: prereq
-	h5cc $(CC_FLAGS) -c test_2.c -o test_2.o
+	h5cc $(CC_FLAGS) -I$(AMSHOME)/tools/include -c test_2.c -o test_2.o
 	h5cc test_2.o -o test_2.out -Wl,-rpath=$(SVLIB) -L$(SVLIB) -lessveepy
 
 .PHONY: clean

@@ -16,75 +16,16 @@
 //
 ///////////////////////////////////////////////////////////////////////////////
 
+#ifndef __SVP__DSTORE__H__
+#define __SVP__DSTORE__H__
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "hdf5.h"
-
-///////////////////////////////////////////////////////////////////////////////
-// Constants
-///////////////////////////////////////////////////////////////////////////////
-
-/// Maximum flattened size of each data record (product of all dimensions)
-#define MAX_FLAT_SIZE 2048
-/// Size of each page in the HD5 file and corresponding cache
-#define CHUNK_SIZE 8192
-
-/**
- * @brief Enumeration of the different types of data that can be stored.
- *
- */
-enum svp_storage_e {
-  SVP_SYNC_DATA,
-  SVP_ASYNC_DATA,
-  SVP_SIM_TIME
-};
-
-///////////////////////////////////////////////////////////////////////////////
-// Data structures
-///////////////////////////////////////////////////////////////////////////////
-
-/**
- * @brief High-resolution timestamp.
- *
- * Time is stored as an integral number of nanoseconds, plus a floating-point
- * remainder in [0, 1).
- *
- */
-struct svp_sim_time_t {
-  long ns;
-  double rem;
-};
-
-
-/**
- * @brief State information for a data destination in the HD5 file.
- *
- */
-struct svp_dstore_t {
-  const char *name;         ///< Name of simulation variable being stored
-  enum svp_storage_e store_type; ///< Storage type of dstore
-  hid_t dspc;               ///< Dataspace handle
-  hid_t dtyp;               ///< Datatype (compound) handle
-  hid_t dset;               ///< Dataset handle
-  // Memory views for accessing time and data separately
-  hid_t xfer_id;            ///< Transfer ID
-  hid_t t_mid;              ///< Time memory view
-  hid_t d_mid;              ///< Array data memory view
-  // Write tracking
-  unsigned long wptr;       ///< Total number of elements written
-  unsigned long size;       ///< Current size of file buffer
-  // Description of the actual data being stored
-  hid_t h5type;             ///< Raw atomic datatype
-  int rank;                 ///< Number of dimensions of each data element
-  hsize_t *dims;            ///< Rank-size list of individual array dimensions
-  // Cache data
-  hssize_t cstride;         ///< Cache data stride (bytes)
-  unsigned long cptr;       ///< Cache pointer
-  double *tcache;           ///< Timestamp cache
-  void *dcache;             ///< Data cache
-};
+#include "svdpi.h"
+#include "svp_hdf5_defs.h"
 
 ///////////////////////////////////////////////////////////////////////////////
 // API
@@ -93,7 +34,7 @@ struct svp_dstore_t {
 /**
  * @brief Create a new data storage in an existing file of specified type.
  *
- * @param fid File pointer already opened.
+ * @param clsdat Data structure containing HDF5 file pointer.
  * @param name Fully-qualified signal name.
  * @param store_type Specify the type of signal to be stored.
  * @param rank Number of dimensions.
@@ -101,9 +42,28 @@ struct svp_dstore_t {
  * @param raw_type Underlying HD5 atomic datatype.
  * @return struct svp_dstore_t* Data store object for future writing.
  */
-struct svp_dstore_t *svp_dstore_create(hid_t fid, const char *name,
+struct svp_dstore_t *svp_dstore_create(struct svp_hdf5_data *clsdat,
+                                       const char *name,
                                        enum svp_storage_e store_type, int rank,
                                        const int *dims, hid_t raw_type);
+
+
+/**
+ * @brief Wrapper for easier calling via DPI.
+ *
+ * @param clsdat Data structure containing HDF5 file pointer.
+ * @param name Fully-qualified signal name.
+ * @param is_async Stores timestamp along with data.
+ * @param width Assumes single-dimensional arrays.
+ * @param dtype String version of type.
+ * @return struct svp_dstore_t* Data store object for future writing.
+ *
+ * Current datatypes supported: char, uchar, sint, usint, int, uint, long,
+ * ulong, double, time.
+ */
+struct svp_dstore_t *svp_dstore_svcreate(struct svp_hdf5_data *clsdat,
+                                         const char *name, int is_async,
+                                         int width, const char *dtype);
 
 
 /**
@@ -135,7 +95,7 @@ int svp_dstore_write_data(struct svp_dstore_t *dat, double simtime,
 /**
  * @brief Write specifically the high resolution time data.
  *
- * @param dat Data store object initialized with SVP_SIM_TIME.
+ * @param dat Data store object initialized with SVP_STORE_SIM_TIME.
  * @param simtime Timestamp to be written.
  * @return int Returns 0 if successful.
  */
@@ -144,28 +104,67 @@ int svp_dstore_write_time(struct svp_dstore_t *dat,
 
 
 /**
- * @brief Wrapper for writing scalar long elements (easier to call from DPI).
+ * @brief Explicit typed call for DPI interface.
  *
- * @param dat Data store object initialized with SVP_SIM_TIME.
- * @param simtime Timestamp to be written.
- * @param dwrite Scalar data to be written.
- * @return int Returns 0 if successful.
+ * @param dat Data store object for the matching data type to be written.
+ * @param simtime (optional) For asynchronous data storage, the simtime must
+ * also be provided that is written alongside the data.
+ * @param dbuf Alias of void*, dereferenced with svGetArrayPtr.
+ * @return int 0 if successful.
  */
-inline int svp_dstore_write_long(struct svp_dstore_t *dat, double simtime,
-                                 long dwrite) {
-  return svp_dstore_write_data(dat, simtime, &dwrite);
-};
+int svp_dstore_write_int8(struct svp_dstore_t *dat, double simtime,
+                          const svOpenArrayHandle dbuf);
 
 
 /**
- * @brief Wrapper for writing scalar long elements (easier to call from DPI).
+ * @brief Explicit typed call for DPI interface.
  *
- * @param dat Data store object initialized with SVP_SIM_TIME.
- * @param simtime Timestamp to be written.
- * @param dwrite Scalar data to be written.
- * @return int Returns 0 if successful.
+ * @param dat Data store object for the matching data type to be written.
+ * @param simtime (optional) For asynchronous data storage, the simtime must
+ * also be provided that is written alongside the data.
+ * @param dbuf Alias of void*, dereferenced with svGetArrayPtr.
+ * @return int 0 if successful.
  */
-inline int svp_dstore_write_double(struct svp_dstore_t *dat, double simtime,
-                                   double dwrite) {
-  return svp_dstore_write_data(dat, simtime, &dwrite);
-};
+int svp_dstore_write_int16(struct svp_dstore_t *dat, double simtime,
+                           const svOpenArrayHandle dbuf);
+
+
+/**
+ * @brief Explicit typed call for DPI interface.
+ *
+ * @param dat Data store object for the matching data type to be written.
+ * @param simtime (optional) For asynchronous data storage, the simtime must
+ * also be provided that is written alongside the data.
+ * @param dbuf Alias of void*, dereferenced with svGetArrayPtr.
+ * @return int 0 if successful.
+ */
+int svp_dstore_write_int32(struct svp_dstore_t *dat, double simtime,
+                           const svOpenArrayHandle dbuf);
+
+
+/**
+ * @brief Explicit typed call for DPI interface.
+ *
+ * @param dat Data store object for the matching data type to be written.
+ * @param simtime (optional) For asynchronous data storage, the simtime must
+ * also be provided that is written alongside the data.
+ * @param dbuf Alias of void*, dereferenced with svGetArrayPtr.
+ * @return int 0 if successful.
+ */
+int svp_dstore_write_int64(struct svp_dstore_t *dat, double simtime,
+                           const svOpenArrayHandle dbuf);
+
+
+/**
+ * @brief Explicit typed call for DPI interface.
+ *
+ * @param dat Data store object for the matching data type to be written.
+ * @param simtime (optional) For asynchronous data storage, the simtime must
+ * also be provided that is written alongside the data.
+ * @param dbuf Alias of void*, dereferenced with svGetArrayPtr.
+ * @return int 0 if successful.
+ */
+int svp_dstore_write_float64(struct svp_dstore_t *dat, double simtime,
+                             const svOpenArrayHandle dbuf);
+
+#endif

@@ -40,11 +40,11 @@
     "C_Cpp.default.browse.path": [
         "${workspaceFolder}",
         "${env:CONDAHOME}/include",
-
+        "${env:AMSHOME}/tools/include"
     ],
     "C_Cpp.intelliSenseEngine": "Default",
     "C_Cpp.clang_format_style": "Google",
-    "C_Cpp.clang_format_fallbackStyle": "LLVM",
+    "C_Cpp.clang_format_fallbackStyle": "Mozilla",
     "C_Cpp.enhancedColorization": "Enabled",
     "C_Cpp.errorSquiggles": "EnabledIfIncludesResolve",
 
@@ -55,4 +55,8 @@
         "type_traits": "c",
         "cmath": "c"
     },
+    "C_Cpp.default.cStandard": "c11",
+    "C_Cpp.default.cppStandard": "c++14",
+    "C_Cpp.default.intelliSenseMode": "linux-gcc-x64",
+    "C_Cpp.intelliSenseMemoryLimit": 16384,
 }

@@ -79,7 +79,7 @@ $(SVLIB):
 ################################################################################
 
 $(BUILD)/%.o: $(SRC)/%.c | $(BUILD)
-	h5cc $(CC_FLAGS) $(DEBUG_FLAGS) $< -c -o $@
+	h5cc $(CC_FLAGS) $(DEBUG_FLAGS) -I$(AMSHOME)/tools/include $< -c -o $@
 
 ################################################################################
 # HDF5-specific compiles
@@ -98,4 +98,4 @@ SVP_OBJ := $(addsuffix .o,$(addprefix $(BUILD)/,$(SVP_CSRC)))
 ################################################################################
 
 $(SVLIB)/libessveepy.so: $(HDF5_OBJ) $(SVP_OBJ) | $(SVLIB)
-	h5cc -shared $(HDF5_OBJ) $(SVP_OBJ) -o $@
+	h5cc -shared $(HDF5_OBJ) $(SVP_OBJ) -o $@ -I$(AMSHOME)/tools/include

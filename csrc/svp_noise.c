@@ -80,6 +80,19 @@ double svp_rng_flicker_filt(struct svp_flicker_filt_t* dat, double x) {
 ///////////////////////////////////////////////////////////////////////////////
 
 
+void *svp_rng_init() {
+  void *dat = malloc(sizeof(struct svp_rng_state_t));
+  memset(dat, 0, sizeof(struct svp_rng_state_t));
+  return dat;
+}  // svp_rng_init
+
+
+void svp_rng_free(void *dat) {
+  struct svp_rng_state_t *dptr = (struct svp_rng_state_t *)dat;
+  free(dptr);
+}  // svp_rng_free
+
+
 void svp_rng_seed(unsigned int seed) {
   srand(seed);
 }  // svp_rng_seed

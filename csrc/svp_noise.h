@@ -15,6 +15,9 @@
 //
 ///////////////////////////////////////////////////////////////////////////////
 
+#ifndef __SVP__NOISE__H__
+#define __SVP__NOISE__H__
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -74,6 +77,22 @@ struct svp_rng_flicker_state_t {
 ///////////////////////////////////////////////////////////////////////////////
 // API
 ///////////////////////////////////////////////////////////////////////////////
+
+
+/**
+ * @brief Allocate a state structure for the normal distribution.
+ *
+ * @return struct svp_rng_state_t* Generator state.
+ */
+void *svp_rng_init();
+
+
+/**
+ * @brief Destroy the generator state once it is no longer used.
+ *
+ * @param dat Generator state.
+ */
+void svp_rng_free(void *dat);
 
 
 /**
@@ -164,3 +183,5 @@ double svp_rng_flicker_samp(struct svp_rng_flicker_state_t* dat);
  */
 double svp_rng_flicker_samp_scale(struct svp_rng_flicker_state_t* dat,
                                   double scale);
+
+#endif

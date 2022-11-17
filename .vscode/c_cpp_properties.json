@@ -2,7 +2,8 @@
     "env": {
         "myDefaultIncludePath": [
             "${workspaceFolder}/**",
-            "${env:CONDAHOME}/include"
+            "${env:CONDAHOME}/include",
+            "${env:AMSHOME}/tools/include"
         ]
     },
     "configurations": [

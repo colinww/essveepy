@@ -21,6 +21,7 @@
 #include <string.h>
 
 #include "../../csrc/svp_file.h"
+#include "../../csrc/svp_dstore.h"
 #include "../../csrc/svp_noise.h"
 
 
@@ -35,12 +36,12 @@ int main(void) {
   // Add some data to the file
   int dims[1] = {1};
   struct svp_dstore_t *ds1 =
-      svp_dstore_create(dat->fptr, "u_top.rand", SVP_SYNC_DATA,
+      svp_dstore_create(dat, "u_top.rand", SVP_STORE_SYNC_DATA,
                         1, dims, H5T_NATIVE_DOUBLE);
   struct svp_dstore_t *ds2 = svp_dstore_create(
-      dat->fptr, "u_top.randn", SVP_SYNC_DATA, 1, dims, H5T_NATIVE_DOUBLE);
+      dat, "u_top.randn", SVP_STORE_SYNC_DATA, 1, dims, H5T_NATIVE_DOUBLE);
   struct svp_dstore_t *ds3 = svp_dstore_create(
-      dat->fptr, "u_top.randn_bnd", SVP_SYNC_DATA, 1, dims, H5T_NATIVE_DOUBLE);
+      dat, "u_top.randn_bnd", SVP_STORE_SYNC_DATA, 1, dims, H5T_NATIVE_DOUBLE);
 
   // Register the data
   svp_hdf5_addsig(dat, ds1);
@@ -55,18 +56,18 @@ int main(void) {
     // Populate data
     samp = svp_rng_rand();
     // Write data
-    svp_dstore_write_double(ds1, 0, samp);
+    svp_dstore_write_data(ds1, 0, &samp);
   }
   // Write normally-distributed random numbers
   for (int ii = 0; NUM_RAND > ii; ++ii) {
     // Populate data
     samp = svp_rng_randn(&gen);
     // Write data
-    svp_dstore_write_double(ds2, 0, samp);
+    svp_dstore_write_data(ds2, 0, &samp);
     // Populate data
     samp = svp_rng_randn_bnd(&gen, SIGMA_MIN, SIGMA_MAX);
     // Write data
-    svp_dstore_write_double(ds3, 0, samp);
+    svp_dstore_write_data(ds3, 0, &samp);
   }
 
   // Close the data

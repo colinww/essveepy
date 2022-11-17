@@ -7,7 +7,7 @@
 #
 # Description
 # -----------
-# Testing UVM signal sniffing mechanisms.
+# Testing noise functions in the SV package.
 #
 # Version History
 # ---------------
@@ -23,14 +23,22 @@ COMPILE_ARGS += -TIMESCALE 1ns/1fs
 XRUN_ARGS := -64bit -R -l xrun_run.log
 
 # Compile and run the test
-.PHONY: test
-test:
-	xrun $(COMPILE_ARGS) submod.sv top.sv
-	xrun $(XRUN_ARGS) -input shm.tcl
+.PHONY: all
+all: compile run
+
+.PHONY: compile
+compile:
+	cd ../../ && make
+	xrun $(COMPILE_ARGS) ../../svinc/svp_pkg.sv top.sv
+
+.PHONY: run
+run:
+	xrun $(XRUN_ARGS) -sv_lib ../../svlib/libessveepy.so -input shm.tcl
 
 # Clean simulation artifacts
 .PHONY: clean
 clean:
+	cd ../../ && make clean
 	rm -rf xcelium.d
 	rm -rf waves.shm
 	rm -f xrun_compile.history
@@ -39,3 +47,4 @@ clean:
 	rm -f xrun.log
 	rm -f xrun.key
 	rm -f xrun_run.log
+	rm -f *.h5

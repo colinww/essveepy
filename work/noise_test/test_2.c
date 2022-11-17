@@ -21,6 +21,7 @@
 #include <string.h>
 
 #include "../../csrc/svp_file.h"
+#include "../../csrc/svp_dstore.h"
 #include "../../csrc/svp_noise.h"
 
 
@@ -35,8 +36,8 @@ int main(void) {
   // Add some data to the file
   int dims[1] = {1};
   struct svp_dstore_t *ds1 =
-      svp_dstore_create(dat->fptr, "u_top.flicker", SVP_SYNC_DATA,
-                        1, dims, H5T_NATIVE_DOUBLE);
+      svp_dstore_create(dat, "u_top.flicker", SVP_STORE_SYNC_DATA, 1, dims,
+                        H5T_NATIVE_DOUBLE);
 
   // Register the data
   svp_hdf5_addsig(dat, ds1);
@@ -51,7 +52,7 @@ int main(void) {
     // Populate data
     samp = svp_rng_flicker_samp(fgen);
     // Write data
-    svp_dstore_write_double(ds1, 0, samp);
+    svp_dstore_write_data(ds1, 0, &samp);
   }
 
   // De-allocate flicker generator

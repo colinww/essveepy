@@ -116,7 +116,8 @@ void svp_dstore_flush(struct svp_dstore_t *dat) {
 // API
 ///////////////////////////////////////////////////////////////////////////////
 
-struct svp_dstore_t *svp_dstore_create(hid_t fid, const char *name,
+struct svp_dstore_t *svp_dstore_create(struct svp_hdf5_data *clsdat,
+                                       const char *name,
                                        enum svp_storage_e store_type, int rank,
                                        const int *dims, hid_t raw_type) {
   // Allocate a new data structure and 0-initialize
@@ -137,7 +138,7 @@ struct svp_dstore_t *svp_dstore_create(hid_t fid, const char *name,
 
   // Determine what to do based on the storage enum
   switch (store_type) {
-    case (SVP_SIM_TIME) :
+    case (SVP_STORE_SIM_TIME) :
       // Handle svp_sim_time_t first, since it is the most different in terms
       // of the dataset structure
       dat->h5type = H5T_NATIVE_LONG;
@@ -162,7 +163,7 @@ struct svp_dstore_t *svp_dstore_create(hid_t fid, const char *name,
       dat->tcache = (double *)malloc(CHUNK_SIZE * sizeof(double));
       dat->dcache = malloc(CHUNK_SIZE * H5Tget_size(H5T_NATIVE_LONG));
       break;
-    case (SVP_ASYNC_DATA) :
+    case (SVP_STORE_ASYNC_DATA) :
       // Do special setup particular to asynchronous data, then fall through to
       // the regular synchronous data setup. First create the memoryview of
       // the double timestamps
@@ -170,7 +171,7 @@ struct svp_dstore_t *svp_dstore_create(hid_t fid, const char *name,
       H5Tinsert(dat->t_mid, "time", 0, H5T_NATIVE_DOUBLE);
       // Allocate cache space
       dat->tcache = (double *)malloc(CHUNK_SIZE * sizeof(double));
-    case (SVP_SYNC_DATA) :
+    case (SVP_STORE_SYNC_DATA) :
       // Main data storage setup, for both synchronous and asynchronous types
       dat->h5type = raw_type;
       // Allocate dimension array, and check the data size
@@ -213,7 +214,7 @@ struct svp_dstore_t *svp_dstore_create(hid_t fid, const char *name,
   H5Pset_chunk(prop, 1, cpd_chunk_dims);
   hid_t gid;
   char *sig_name;
-  svp_dstore_hier_name(fid, name, &gid, &sig_name);
+  svp_dstore_hier_name(clsdat->fptr, name, &gid, &sig_name);
   dat->dset = H5Dcreate2(gid, sig_name, dat->dtyp, dat->dspc, H5P_DEFAULT, prop,
                          H5P_DEFAULT);
   H5Pclose(prop);
@@ -221,6 +222,60 @@ struct svp_dstore_t *svp_dstore_create(hid_t fid, const char *name,
   // Return the data structure handle
   return dat;
 }  // svp_dstore_create
+
+
+struct svp_dstore_t *svp_dstore_svcreate(struct svp_hdf5_data *clsdat,
+                                         const char *name, int is_async,
+                                         int width, const char *dtype) {
+  // Single dimensional array
+  int dims[1] = {0};
+  dims[0] = width;
+  // Assign switch
+  enum svp_storage_e store_type = 0;
+  if (strcmp(dtype, "time") == 0) {
+    // If we store time, ignore other parameters
+    store_type = SVP_STORE_SIM_TIME;
+  } else {
+    // Check if we store sync or async data
+    store_type = (is_async) ? SVP_STORE_ASYNC_DATA : SVP_STORE_SYNC_DATA;
+  }
+  // Switch based on data type
+  if (strcmp(dtype, "char") == 0) {
+    return svp_dstore_create(clsdat, name, store_type, 1, dims,
+                             H5T_NATIVE_CHAR);
+  } else if (strcmp(dtype, "uchar") == 0) {
+    return svp_dstore_create(clsdat, name, store_type, 1, dims,
+                             H5T_NATIVE_UCHAR);
+  } else if (strcmp(dtype, "sint") == 0) {
+    return svp_dstore_create(clsdat, name, store_type, 1, dims,
+                             H5T_NATIVE_SHORT);
+  } else if (strcmp(dtype, "usint") == 0) {
+    return svp_dstore_create(clsdat, name, store_type, 1, dims,
+                             H5T_NATIVE_USHORT);
+  } else if (strcmp(dtype, "int") == 0) {
+    return svp_dstore_create(clsdat, name, store_type, 1, dims,
+                             H5T_NATIVE_INT);
+  } else if (strcmp(dtype, "uint") == 0) {
+    return svp_dstore_create(clsdat, name, store_type, 1, dims,
+                             H5T_NATIVE_UINT);
+  } else if (strcmp(dtype, "long") == 0) {
+    return svp_dstore_create(clsdat, name, store_type, 1, dims,
+                             H5T_NATIVE_LONG);
+  } else if (strcmp(dtype, "ulong") == 0) {
+    return svp_dstore_create(clsdat, name, store_type, 1, dims,
+                             H5T_NATIVE_ULONG);
+  } else if (strcmp(dtype, "double") == 0) {
+    return svp_dstore_create(clsdat, name, store_type, 1, dims,
+                             H5T_NATIVE_DOUBLE);
+  } else if (strcmp(dtype, "time") == 0) {
+    return svp_dstore_create(clsdat, name, store_type, 1, dims,
+                             H5T_NATIVE_DOUBLE);
+  } else {
+    fprintf(stderr, "ERROR %s: Unknown dtype: %s\n", __func__, dtype);
+  }
+  // IF we reach here, something is wrong
+  return NULL;
+}  // svp_dstore_svcreate
 
 
 void svp_dstore_close(struct svp_dstore_t *dat) {
@@ -292,7 +347,7 @@ int svp_dstore_write_data(struct svp_dstore_t *dat, double simtime,
 int svp_dstore_write_time(struct svp_dstore_t *dat,
                           struct svp_sim_time_t simtime) {
   // Check this is the correct storage type
-  if (SVP_SIM_TIME != dat->store_type) {
+  if (SVP_STORE_SIM_TIME != dat->store_type) {
     fprintf(stderr, "This signal: %s has the wrong storage type!\n", dat->name);
     return 1;
   }
@@ -318,3 +373,38 @@ int svp_dstore_write_time(struct svp_dstore_t *dat,
   }
   return 0;
 }  // svp_dstore_write_time
+
+
+inline int svp_dstore_write_int8(struct svp_dstore_t *dat, double simtime,
+                                  const svOpenArrayHandle dbuf) {
+  void *dptr = svGetArrayPtr(dbuf);
+  return svp_dstore_write_data(dat, simtime, dptr);
+}  // svp_dstore_write_int8
+
+
+inline int svp_dstore_write_int16(struct svp_dstore_t *dat, double simtime,
+                                  const svOpenArrayHandle dbuf) {
+  void *dptr = svGetArrayPtr(dbuf);
+  return svp_dstore_write_data(dat, simtime, dptr);
+}  // svp_dstore_write_int16
+
+
+inline int svp_dstore_write_int32(struct svp_dstore_t *dat, double simtime,
+                                  const svOpenArrayHandle dbuf) {
+  void *dptr = svGetArrayPtr(dbuf);
+  return svp_dstore_write_data(dat, simtime, dptr);
+}  // svp_dstore_write_int32
+
+
+inline int svp_dstore_write_int64(struct svp_dstore_t *dat, double simtime,
+                                  const svOpenArrayHandle dbuf) {
+  void *dptr = svGetArrayPtr(dbuf);
+  return svp_dstore_write_data(dat, simtime, dptr);
+}  // svp_dstore_write_int64
+
+
+inline int svp_dstore_write_float64(struct svp_dstore_t *dat, double simtime,
+                                    const svOpenArrayHandle dbuf) {
+  void *dptr = svGetArrayPtr(dbuf);
+  return svp_dstore_write_data(dat, simtime, dptr);
+}  // svp_dstore_write_float64
