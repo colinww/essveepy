@@ -20,7 +20,7 @@
 
 ###########################
 # HDF5-specific source files
-HDF5_CSRC := svp_dstore svp_file
+HDF5_CSRC := svp_hdf5_defs svp_dstore svp_file
 
 ##############################
 # General library source files

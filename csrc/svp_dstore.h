@@ -78,6 +78,16 @@ void svp_dstore_close(struct svp_dstore_t *dat);
 
 
 /**
+ * @brief Add a string attribute to HDF5 dataset.
+ *
+ * @param dat Datastore object.
+ * @param name Attribute name.
+ * @param value Attribute value.
+ */
+void svp_dstore_svattr(struct svp_dstore_t *dat, char *name, char *value);
+
+
+/**
  * @brief Write a data point to the data storage.
  *
  * @param dat Data store object for the matching data type to be written.

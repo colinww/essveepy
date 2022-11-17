@@ -64,3 +64,9 @@ int svp_hdf5_fclose(struct svp_hdf5_data *clsdat) {
   free(clsdat);
   return 0;
 }  // svp_hdf5_fclose
+
+
+void svp_hdf5_add_attribute(struct svp_hdf5_data *clsdat, char *name,
+                            char *value) {
+  svp_add_attr(clsdat->fptr, name, value);
+}  // svp_hdf5_add_attribute

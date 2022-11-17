@@ -18,6 +18,10 @@
 #ifndef __SVP__HDF5__DEFS__H__
 #define __SVP__HDF5__DEFS__H__
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
 #include "hdf5.h"
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -93,5 +97,36 @@ struct svp_hdf5_data {
   int num_signals;
   struct svp_dstore_t **dptr;
 };  // svp_hdf5_data
+
+
+///////////////////////////////////////////////////////////////////////////////
+// Helper functions
+///////////////////////////////////////////////////////////////////////////////
+
+/**
+ * @brief Reconstruct a signal absolute path hierarchy in HD5 groups.
+ *
+ * @param fid Starting object, usually file ID.
+ * @param full_name The full path to the signal.
+ * @param gid Final group ID containing the actual signal.
+ * @param sig_name Actual signal name.
+ *
+ * This performs a similar function to the python os.mkdirs() function, in that
+ * any intermediate hierarchy (containing submodules) are constructed as HD5
+ * groups if they do not already exist.
+ */
+void svp_group_hierarchy_split(hid_t fid, const char *full_name, hid_t *gid,
+                               char **sig_name);
+
+
+/**
+ * @brief Add string attribute to HDF5 object.
+ *
+ * @param obj_id Object receiving attribute.
+ * @param name Attribute name.
+ * @param value Attribute value.
+ * @return herr_t Error code, returns 0 if successful.
+ */
+herr_t svp_add_attr(hid_t obj_id, char *name, char *value);
 
 #endif

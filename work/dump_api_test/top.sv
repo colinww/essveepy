@@ -25,7 +25,7 @@ module top;
   //////////////////////////
   // Testbench configuration
   //////////////////////////
-  localparam real T_RUN = 1000000;
+  localparam real T_RUN = 10000;
 
   localparam real RANDN_BND_MIN = -1.5;
   localparam real RANDN_BND_MAX = 1;
@@ -145,22 +145,22 @@ module top;
     // Initialize file
     fobj = new("sv_data_dump.h5");
     // Register all signals
-    dump_bit6_unsigned = new(fobj, "top.bit.u6");
-    dump_bit6_signed = new(fobj, "top.bit.s6");
-    dump_bit8_unsigned = new(fobj, "top.bit.u8");
-    dump_bit8_signed = new(fobj, "top.bit.s8");
-    dump_bit14_signed = new(fobj, "top.bit.s14");
-    dump_bit21a2 = new(fobj, "top.bit.s21a2");
-    dump_bit41a2 = new(fobj, "top.bit.s41a2");
-    dump_int8 = new(fobj, "top.integer.i8");
-    dump_int16 = new(fobj, "top.integer.i16");
-    dump_int32 = new(fobj, "top.integer.i32");
-    dump_int64 = new(fobj, "top.integer.i64");
-    dump_int8a4 = new(fobj, "top.integer.i8a4");
-    dump_real_scalar = new(fobj, "top.real.sync");
-    dump_real_async_scalar = new(fobj, "top.real.async");
-    dump_real_arr3 = new(fobj, "top.real.array");
-    dump_time = new(fobj, "top.time");
+    dump_bit6_unsigned = new(fobj, "top.bit_type.u6");
+    dump_bit6_signed = new(fobj, "top.bit_type.s6");
+    dump_bit8_unsigned = new(fobj, "top.bit_type.u8");
+    dump_bit8_signed = new(fobj, "top.bit_type.s8");
+    dump_bit14_signed = new(fobj, "top.bit_type.s14");
+    dump_bit21a2 = new(fobj, "top.bit_type.arrays.s21a2");
+    dump_bit41a2 = new(fobj, "top.bit_type.arrays.s41a2");
+    dump_int8 = new(fobj, "top.integer_types.i8");
+    dump_int16 = new(fobj, "top.integer_types.i16");
+    dump_int32 = new(fobj, "top.integer_types.i32");
+    dump_int64 = new(fobj, "top.integer_types.i64");
+    dump_int8a4 = new(fobj, "top.integer_types.arrays.i8a4");
+    dump_real_scalar = new(fobj, "top.real_type.sync_data");
+    dump_real_async_scalar = new(fobj, "top.real_type.async_data");
+    dump_real_arr3 = new(fobj, "top.real_type.arrays.arr3");
+    dump_time = new(fobj, "top.timestamps");
   end
   final begin
     fobj.close();

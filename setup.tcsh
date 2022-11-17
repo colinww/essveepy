@@ -36,4 +36,4 @@ setenv HDF5_CC ${AMSHOME}/tools/cdsgcc/gcc/bin/gcc
 setenv HDF5_CLINKER ${AMSHOME}/tools/cdsgcc/gcc/bin/gcc
 
 # Add current dir to python path
-setenv PYTHONPATH .:${PYTHONPATH}
+setenv PYTHONPATH `pwd`:${PYTHONPATH}

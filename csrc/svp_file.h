@@ -45,7 +45,7 @@ struct svp_hdf5_data *svp_hdf5_fopen(const char *fname);
 /**
  * @brief Add a signal to the file to be dumped.
  *
- * @param clsdat File handle to contain signal.
+ * @param clsdat File handle to contain signals.
  * @param dat Data store object that will be added to the file.
  * @return int Returns 0 if successful.
  */
@@ -60,5 +60,16 @@ int svp_hdf5_addsig(struct svp_hdf5_data *clsdat, struct svp_dstore_t *dat);
  * After closing, none of the associated data stores can be used.
  */
 int svp_hdf5_fclose(struct svp_hdf5_data *clsdat);
+
+
+/**
+ * @brief Add a string attribute to HDF5 data file.
+ *
+ * @param clsdat File handle previously created.
+ * @param name Attribute name.
+ * @param value Attribute value.
+ */
+void svp_hdf5_add_attribute(struct svp_hdf5_data *clsdat, char *name,
+                            char *value);
 
 #endif

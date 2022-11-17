@@ -21,6 +21,10 @@
 package svp_pkg;
 
 ///////////////////////////////////////////////////////////////////////////////
+// Generally useful functions
+import "DPI-C" function string getenv(input string env_name);
+
+///////////////////////////////////////////////////////////////////////////////
 // Random signal generator imports
 import "DPI-C" function chandle svp_rng_init();
 import "DPI-C" function void svp_rng_free(chandle dat);
@@ -137,10 +141,14 @@ typedef struct {
 import "DPI-C" function chandle svp_hdf5_fopen(string fname);
 import "DPI-C" function int svp_hdf5_addsig(chandle clsdat, chandle dat);
 import "DPI-C" function int svp_hdf5_fclose(chandle clsdat);
+import "DPI-C" function void svp_hdf5_add_attribute(chandle clsdat, string name,
+                                                    string value);
 // Dump objects
 import "DPI-C" function chandle svp_dstore_svcreate(chandle clsdat, string name,
                                                     int store_type, int width,
                                                     string dtype);
+import "DPI-C" function void svp_dstore_svattr(chandle dat, string name,
+                                               string value);
 // Data writers
 import "DPI-C" function int svp_dstore_write_int8(chandle dat, real simtime,
                                                   input byte dbuf []);
@@ -175,7 +183,11 @@ chandle dat;
  * @param fname Name of file to be created.
  */
 function new(string fname);
+  // Create the file handle
   this.dat = svp_hdf5_fopen(fname);
+  // Add file metadata
+  svp_hdf5_add_attribute(this.dat, "user", getenv("USER"));
+  svp_hdf5_add_attribute(this.dat, "dir", getenv("PWD"));
 endfunction
 
 /**
@@ -274,6 +286,8 @@ class svpBitDump #(int ASYNC=0, int SIGNED=1, int WIDTH=1) extends svpDumpAbc;
         status = super.alloc(fobj, signame, ASYNC, 1, "ulong");
       end
     end
+    // Add SV type
+    svp_dstore_svattr(this.dat, "svtype", "bit");
   endfunction
 
   /**
@@ -367,6 +381,8 @@ class svpBitArrayDump
         status = super.alloc(fobj, signame, ASYNC, SIZE, "ulong");
       end
     end
+    // Add SV type
+    svp_dstore_svattr(this.dat, "svtype", "bit");
   endfunction
 
   /**
@@ -467,6 +483,8 @@ class svpIntegerDump #(int ASYNC=0, type T=byte) extends svpDumpAbc;
         $error("Datatype %s is invalid!", $typename(T));
       end
     endcase
+    // Add SV type
+    svp_dstore_svattr(this.dat, "svtype", "integer");
   endfunction
 
   /**
@@ -541,6 +559,8 @@ class svpIntegerArrayDump
         $error("Datatype %s is invalid!", $typename(T));
       end
     endcase
+    // Add SV type
+    svp_dstore_svattr(this.dat, "svtype", "integer");
   endfunction
 
   /**
@@ -598,6 +618,8 @@ class svpRealDump #(int ASYNC=0) extends svpDumpAbc;
    */
   function new(svpDumpFile fobj, string signame);
     int status = super.alloc(fobj, signame, ASYNC, 1, "double");
+    // Add SV type
+    svp_dstore_svattr(this.dat, "svtype", "real");
   endfunction
 
   /**
@@ -629,6 +651,8 @@ class svpRealArrayDump #(int ASYNC=0, int SIZE=1) extends svpDumpAbc;
    */
   function new(svpDumpFile fobj, string signame);
     int status = super.alloc(fobj, signame, ASYNC, SIZE, "double");
+    // Add SV type
+    svp_dstore_svattr(this.dat, "svtype", "real");
   endfunction
 
   /**
@@ -658,6 +682,8 @@ class svpTimeDump extends svpDumpAbc;
    */
   function new(svpDumpFile fobj, string signame);
     int status = super.alloc(fobj, signame, 0, 1, "time");
+    // Add SV type
+    svp_dstore_svattr(this.dat, "svtype", "time");
   endfunction
 
   /**
