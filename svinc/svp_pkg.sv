@@ -18,6 +18,8 @@
 `ifndef __SVP__PKG__SV__
 `define __SVP__PKG__SV__
 
+`timescale 1ns/1fs
+
 package svp_pkg;
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -127,7 +129,7 @@ endclass  // svpFlicker
 
 
 ///////////////////////////////////////////////////////////////////////////////
-// HDF5 simulation data dumping
+// High-resolution time
 
 /**
  * High-resolution simulation time data.
@@ -137,6 +139,77 @@ typedef struct {
   real rem;
 } svp_sim_time_t;
 
+
+function svp_sim_time_t get_sim_time();
+  real ctime;
+  ctime = $realtime();
+  get_sim_time.ns = $floor(ctime);
+  get_sim_time.rem = ctime - real'(get_sim_time.ns);
+  if (0 > get_sim_time.rem) begin
+    get_sim_time.ns -= 1;
+    get_sim_time.rem += 1.0;
+  end else if (1 <= get_sim_time.rem) begin
+    get_sim_time.ns += 1;
+    get_sim_time.ns -= 1.0;
+  end
+  return get_sim_time;
+endfunction : get_sim_time
+
+
+function svp_sim_time_t svp_sim_time_add(svp_sim_time_t a, svp_sim_time_t b);
+  svp_sim_time_add.ns = a.ns + b.ns;
+  svp_sim_time_add.rem = a.rem + b.rem;
+  if (1 <= svp_sim_time_add.rem) begin
+    svp_sim_time_add.ns += 1;
+    svp_sim_time_add.rem -= 1.0;
+  end
+  return svp_sim_time_add;
+endfunction : svp_sim_time_add
+
+
+function svp_sim_time_t svp_sim_time_incr(svp_sim_time_t a, real b);
+  longint int_part;
+  svp_sim_time_incr.rem = a.rem + b;
+  int_part = $floor(svp_sim_time_incr.rem);
+  svp_sim_time_incr.ns = a.ns + int_part;
+  svp_sim_time_incr.rem = svp_sim_time_incr.rem - real'(int_part);
+  return svp_sim_time_incr;
+endfunction : svp_sim_time_incr
+
+
+function svp_sim_time_t svp_sim_time_sub(svp_sim_time_t a, svp_sim_time_t b);
+  svp_sim_time_sub.ns = a.ns - b.ns;
+  svp_sim_time_sub.rem = a.rem - b.rem;
+  if (0 > svp_sim_time_sub.rem) begin
+    svp_sim_time_sub.ns -= 1;
+    svp_sim_time_sub.rem += 1.0;
+  end
+  return svp_sim_time_sub;
+endfunction : svp_sim_time_sub
+
+
+function real svp_sim_time_to_real(svp_sim_time_t a);
+  return real'(a.ns) + a.rem;
+endfunction : svp_sim_time_to_real
+
+
+function svp_sim_time_t svp_real_to_sim_time(real a);
+  svp_real_to_sim_time.ns = $floor(a);
+  svp_real_to_sim_time.rem = a - real'(svp_real_to_sim_time.ns);
+  if (0 > svp_real_to_sim_time.rem) begin
+    svp_real_to_sim_time.ns -= 1;
+    svp_real_to_sim_time.rem += 1.0;
+  end else if (1 <= svp_real_to_sim_time.rem) begin
+    svp_real_to_sim_time.ns += 1;
+    svp_real_to_sim_time.ns -= 1.0;
+  end
+  return svp_real_to_sim_time;
+endfunction : svp_real_to_sim_time
+
+
+
+///////////////////////////////////////////////////////////////////////////////
+// HDF5 simulation data dumping
 // HDF5 file handling
 import "DPI-C" function chandle svp_hdf5_fopen(string fname);
 import "DPI-C" function int svp_hdf5_addsig(chandle clsdat, chandle dat);
