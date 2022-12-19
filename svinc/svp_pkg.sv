@@ -12,6 +12,7 @@
 // Version History
 // ---------------
 // 13-Nov-22: Initial version
+// 19-Dec-22: Lock the C random seed to the simulator random seed.
 //
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -30,6 +31,7 @@ import "DPI-C" function string getenv(input string env_name);
 // Random signal generator imports
 import "DPI-C" function chandle svp_rng_init();
 import "DPI-C" function void svp_rng_free(chandle dat);
+import "DPI-C" function void svp_rng_seed(int unsigned seed);
 import "DPI-C" function real svp_rng_rand();
 import "DPI-C" function real svp_rng_randn(chandle dat);
 import "DPI-C" function real svp_rng_randn_bnd(chandle dat, real rmin,
@@ -47,6 +49,7 @@ class svpRandom;
    */
   function new();
     this.dat = svp_rng_init();
+    svp_rng_seed($urandom());
   endfunction
 
   /**
@@ -103,6 +106,7 @@ class svpFlicker;
    */
   function new(real flow, real fhigh, real spot_freq, real spot_amp, real fs);
     this.dat = svp_rng_flicker_new(flow, fhigh, spot_freq, spot_amp, fs);
+    svp_rng_seed($urandom());
   endfunction
 
   /**
@@ -769,6 +773,23 @@ class svpTimeDump extends svpDumpAbc;
     void'(svp_dstore_write_int64(super.dat, dwrite.rem, this.ns));
   endfunction
 endclass  //svpRealDump
+
+
+///////////////////////////////////////////////////////////////////////////////
+// Math functions
+
+/**
+ * Compute the floating-point absolute value.
+ * 
+ * @param a Input real number.
+ * @return Absolute value of a.
+ */
+function real svp_fabs(real a);
+  if (0 > a) begin
+    a *= -1;
+  end
+  return a;
+endfunction : svp_fabs
 
 
 endpackage  // svp_pkg
