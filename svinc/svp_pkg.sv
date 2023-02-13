@@ -12,11 +12,15 @@
 // Version History
 // ---------------
 // 13-Nov-22: Initial version
+// 19-Dec-22: Lock the C random seed to the simulator random seed.
+// 12-Feb-23: Added flicker noise flush function.
 //
 ///////////////////////////////////////////////////////////////////////////////
 
 `ifndef __SVP__PKG__SV__
 `define __SVP__PKG__SV__
+
+`timescale 1ns/1fs
 
 package svp_pkg;
 
@@ -28,6 +32,7 @@ import "DPI-C" function string getenv(input string env_name);
 // Random signal generator imports
 import "DPI-C" function chandle svp_rng_init();
 import "DPI-C" function void svp_rng_free(chandle dat);
+import "DPI-C" function void svp_rng_seed(int unsigned seed);
 import "DPI-C" function real svp_rng_rand();
 import "DPI-C" function real svp_rng_randn(chandle dat);
 import "DPI-C" function real svp_rng_randn_bnd(chandle dat, real rmin,
@@ -45,6 +50,7 @@ class svpRandom;
    */
   function new();
     this.dat = svp_rng_init();
+    svp_rng_seed($urandom());
   endfunction
 
   /**
@@ -79,6 +85,7 @@ import "DPI-C" function chandle svp_rng_flicker_new(real flow, real fhigh,
                                                     real spot_freq,
                                                     real spot_amp, real fs);
 import "DPI-C" function void svp_rng_flicker_free(chandle dat);
+import "DPI-C" function void svp_rng_flicker_flush(chandle dat);
 import "DPI-C" function real svp_rng_flicker_samp(chandle dat);
 import "DPI-C" function real svp_rng_flicker_samp_scale(chandle dat,
                                                         real scale);
@@ -101,6 +108,7 @@ class svpFlicker;
    */
   function new(real flow, real fhigh, real spot_freq, real spot_amp, real fs);
     this.dat = svp_rng_flicker_new(flow, fhigh, spot_freq, spot_amp, fs);
+    svp_rng_seed($urandom());
   endfunction
 
   /**
@@ -108,6 +116,13 @@ class svpFlicker;
    */
   function void free();
     svp_rng_flicker_free(this.dat);
+  endfunction
+
+  /**
+   * Flush, to initialize the state of the internal noise filters.
+   */
+  function void flush();
+    svp_rng_flicker_flush(this.dat);
   endfunction
 
   /**
@@ -127,7 +142,7 @@ endclass  // svpFlicker
 
 
 ///////////////////////////////////////////////////////////////////////////////
-// HDF5 simulation data dumping
+// High-resolution time
 
 /**
  * High-resolution simulation time data.
@@ -137,6 +152,77 @@ typedef struct {
   real rem;
 } svp_sim_time_t;
 
+
+function svp_sim_time_t get_sim_time();
+  real ctime;
+  ctime = $realtime();
+  get_sim_time.ns = $floor(ctime);
+  get_sim_time.rem = ctime - real'(get_sim_time.ns);
+  if (0 > get_sim_time.rem) begin
+    get_sim_time.ns -= 1;
+    get_sim_time.rem += 1.0;
+  end else if (1 <= get_sim_time.rem) begin
+    get_sim_time.ns += 1;
+    get_sim_time.ns -= 1.0;
+  end
+  return get_sim_time;
+endfunction : get_sim_time
+
+
+function svp_sim_time_t svp_sim_time_add(svp_sim_time_t a, svp_sim_time_t b);
+  svp_sim_time_add.ns = a.ns + b.ns;
+  svp_sim_time_add.rem = a.rem + b.rem;
+  if (1 <= svp_sim_time_add.rem) begin
+    svp_sim_time_add.ns += 1;
+    svp_sim_time_add.rem -= 1.0;
+  end
+  return svp_sim_time_add;
+endfunction : svp_sim_time_add
+
+
+function svp_sim_time_t svp_sim_time_incr(svp_sim_time_t a, real b);
+  longint int_part;
+  svp_sim_time_incr.rem = a.rem + b;
+  int_part = $floor(svp_sim_time_incr.rem);
+  svp_sim_time_incr.ns = a.ns + int_part;
+  svp_sim_time_incr.rem = svp_sim_time_incr.rem - real'(int_part);
+  return svp_sim_time_incr;
+endfunction : svp_sim_time_incr
+
+
+function svp_sim_time_t svp_sim_time_sub(svp_sim_time_t a, svp_sim_time_t b);
+  svp_sim_time_sub.ns = a.ns - b.ns;
+  svp_sim_time_sub.rem = a.rem - b.rem;
+  if (0 > svp_sim_time_sub.rem) begin
+    svp_sim_time_sub.ns -= 1;
+    svp_sim_time_sub.rem += 1.0;
+  end
+  return svp_sim_time_sub;
+endfunction : svp_sim_time_sub
+
+
+function real svp_sim_time_to_real(svp_sim_time_t a);
+  return real'(a.ns) + a.rem;
+endfunction : svp_sim_time_to_real
+
+
+function svp_sim_time_t svp_real_to_sim_time(real a);
+  svp_real_to_sim_time.ns = $floor(a);
+  svp_real_to_sim_time.rem = a - real'(svp_real_to_sim_time.ns);
+  if (0 > svp_real_to_sim_time.rem) begin
+    svp_real_to_sim_time.ns -= 1;
+    svp_real_to_sim_time.rem += 1.0;
+  end else if (1 <= svp_real_to_sim_time.rem) begin
+    svp_real_to_sim_time.ns += 1;
+    svp_real_to_sim_time.ns -= 1.0;
+  end
+  return svp_real_to_sim_time;
+endfunction : svp_real_to_sim_time
+
+
+
+///////////////////////////////////////////////////////////////////////////////
+// HDF5 simulation data dumping
 // HDF5 file handling
 import "DPI-C" function chandle svp_hdf5_fopen(string fname);
 import "DPI-C" function int svp_hdf5_addsig(chandle clsdat, chandle dat);
@@ -696,6 +782,23 @@ class svpTimeDump extends svpDumpAbc;
     void'(svp_dstore_write_int64(super.dat, dwrite.rem, this.ns));
   endfunction
 endclass  //svpRealDump
+
+
+///////////////////////////////////////////////////////////////////////////////
+// Math functions
+
+/**
+ * Compute the floating-point absolute value.
+ * 
+ * @param a Input real number.
+ * @return Absolute value of a.
+ */
+function real svp_fabs(real a);
+  if (0 > a) begin
+    a *= -1;
+  end
+  return a;
+endfunction : svp_fabs
 
 
 endpackage  // svp_pkg

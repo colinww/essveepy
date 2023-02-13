@@ -12,6 +12,7 @@
 // Version History
 // ---------------
 // 13-Nov-22: Initial version
+// 12-Feb-23: Separated flush() from new().
 //
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -184,11 +185,6 @@ struct svp_rng_flicker_state_t* svp_rng_flicker_new(double flow, double fhigh,
   }
   // Adjust the filter scaling factor to hit the spot targets
   dat->amp_scale = spot_amp * sqrt(fs * spot_freq / filt_freq) / filt_mag;
-  // Run the generator for enough samples to clear out transient effects
-  int num_flush_samples = (int)ceil(fs / pow(10.0, pole_freqs[0]));
-  for (int ii = 0; num_flush_samples > ii; ++ii) {
-    svp_rng_flicker_samp(dat);
-  }
   // Deallocate arrays
   free(zero_freqs);
   free(pole_freqs);
@@ -207,6 +203,18 @@ void svp_rng_flicker_free(struct svp_rng_flicker_state_t* dat) {
     free(dat->stage);
   }
 }  // svp_rng_flicker_free
+
+
+void svp_rng_flicker_flush(struct svp_rng_flicker_state_t* dat) {
+  // Run the generator for enough samples to clear out transient effects
+  // Get the lowest pole frequency from stage[0]
+  // b1 ~= (1 - r0) where r0 = pi * fp / fs
+  double r0 = 1 - dat->stage[0]->b1;
+  int num_flush_samples = (int)ceil(M_PI / r0);
+  for (int ii = 0; num_flush_samples > ii; ++ii) {
+    svp_rng_flicker_samp(dat);
+  }
+}  // svp_rng_flicker_flush
 
 
 double svp_rng_flicker_samp(struct svp_rng_flicker_state_t* dat) {
