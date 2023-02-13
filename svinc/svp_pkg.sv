@@ -13,6 +13,7 @@
 // ---------------
 // 13-Nov-22: Initial version
 // 19-Dec-22: Lock the C random seed to the simulator random seed.
+// 12-Feb-23: Added flicker noise flush function.
 //
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -84,6 +85,7 @@ import "DPI-C" function chandle svp_rng_flicker_new(real flow, real fhigh,
                                                     real spot_freq,
                                                     real spot_amp, real fs);
 import "DPI-C" function void svp_rng_flicker_free(chandle dat);
+import "DPI-C" function void svp_rng_flicker_flush(chandle dat);
 import "DPI-C" function real svp_rng_flicker_samp(chandle dat);
 import "DPI-C" function real svp_rng_flicker_samp_scale(chandle dat,
                                                         real scale);
@@ -114,6 +116,13 @@ class svpFlicker;
    */
   function void free();
     svp_rng_flicker_free(this.dat);
+  endfunction
+
+  /**
+   * Flush, to initialize the state of the internal noise filters.
+   */
+  function void flush();
+    svp_rng_flicker_flush(this.dat);
   endfunction
 
   /**
