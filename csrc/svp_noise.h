@@ -12,6 +12,7 @@
 // Version History
 // ---------------
 // 13-Nov-22: Initial version
+// 12-Feb-23: Added flush routine.
 //
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -160,6 +161,17 @@ struct svp_rng_flicker_state_t *svp_rng_flicker_new(double flow, double fhigh,
  * @param dat Generator state.
  */
 void svp_rng_flicker_free(struct svp_rng_flicker_state_t* dat);
+
+
+/**
+ * @brief Initialize the contents of the flicker filter state.
+ * 
+ * @param dat Generator state.
+ * 
+ * This is useful when the flicker poles are very low frequency, this routine
+ * runs the generator for one time constant of the lowest pole.
+ */
+void svp_rng_flicker_flush(struct svp_rng_flicker_state_t* dat);
 
 
 /**
